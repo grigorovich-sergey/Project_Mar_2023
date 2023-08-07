@@ -36,5 +36,7 @@ DROP_COLUMNS = ['OF_stereo_count_first',
                 'OF_horizontal_first',
                 'OF_vertical_first',
                 'TCT_sociability_2',
-                'TCT_novelty_2']
+                'TCT_novelty_2',
+                'EPM_OE_TE',
+                'EMP_anxiety']
 

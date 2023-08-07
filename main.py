@@ -15,13 +15,23 @@ from matplotlib import gridspec
 from options import *
 
 
-def columnization(df):
-    columns_limit_l = np.argwhere(df.columns.values == 'Group')[0][0] + 1
-    columns_limit_r = np.argwhere(df.columns.values == 'Treathment_x')[0][0] - 1
-    columns_limit_l_m1 = np.argwhere(df.columns.values == 'Latency_carrying_x')[0][0]
-    columns_limit_r_m1 = np.argwhere(df.columns.values == 'Retrieval_interval_x')[0][0] + 1
-    columns_limit_l_m2 = np.argwhere(df.columns.values == 'Latency_carrying_y')[0][0]
-    columns_limit_r_m2 = np.argwhere(df.columns.values == 'Retrieval_interval_y')[0][0] + 1
+def columnization(df, names):
+    """
+    Determines the column in the matrix to analyze
+
+    Parameters:
+        df: pandas DataFrame
+        names: list on column names
+
+    Returns:
+        (column names of participant's data, column names for blood mother, column names for foster mother)
+    """
+    columns_limit_l = np.argwhere(df.columns.values == names[0])[0][0] + 1
+    columns_limit_r = np.argwhere(df.columns.values == names[1])[0][0] - 1
+    columns_limit_l_m1 = np.argwhere(df.columns.values == names[2])[0][0]
+    columns_limit_r_m1 = np.argwhere(df.columns.values == names[3])[0][0] + 1
+    columns_limit_l_m2 = np.argwhere(df.columns.values == names[4])[0][0]
+    columns_limit_r_m2 = np.argwhere(df.columns.values == [5])[0][0] + 1
 
     compare_col = df.columns.values[columns_limit_l:columns_limit_r]
     col_for_heat_1 = list(range(columns_limit_l, columns_limit_r + 1)) \
@@ -32,7 +42,25 @@ def columnization(df):
     return compare_col, col_for_heat_1, col_for_heat_2
 
 
-def heatmap_clustered(df, filename, colors, columns, threshold=0.8, plot=True, show_plot=True, pca=False):
+def heatmap_clustered(df, filename, colors, columns, threshold=0.8, show_plot=True, pca=False, factors=3):
+    """
+    Performs ???
+
+    Parameters:
+        df: pandas DataFrame
+        filename: suffix in output filename
+        colors: color palette for variable categories
+        columns: columns from df to choose
+        threshold: threshold for clustering
+        show_plot: if plot must be shown
+        pca: if factor analysis must be performed
+        factors: numbers of factors to consider
+
+    Returns:
+        loadings: loadings of factors, if pca == True
+        total_variance: cumulative variance, if pca == True
+
+    """
     df_heatmap = df.iloc[:, columns].copy()
     correlations = df_heatmap.corr(method='pearson')
 
@@ -85,7 +113,7 @@ def heatmap_clustered(df, filename, colors, columns, threshold=0.8, plot=True, s
 
     if pca:
         fa = FactorAnalyzer(bounds=(0.005, 1), impute='median', is_corr_matrix=True,
-                            method='minres', n_factors=3, rotation='varimax', rotation_kwargs={},
+                            method='minres', n_factors=factors, rotation='varimax', rotation_kwargs={},
                             use_smc=True)
         fa.fit(correlations)
 
@@ -103,6 +131,18 @@ def heatmap_clustered(df, filename, colors, columns, threshold=0.8, plot=True, s
 
 
 def mann_whitney_all_levels(df, factor, columns):
+    """
+    Performs pair-wise Mann-Whithey comparison between all combination of factor levels in set of variables
+
+    Parameters:
+        df: pandas DataFrame
+        factor: column name to split subjects in all combinations of levels
+        columns: list of column names with variables
+
+    Returns:
+        out_df: pandas DataFrame with summary
+
+    """
     grps = df[factor].unique()
     compare_df = pd.DataFrame(columns=[f'{c1}_{c2}' for c1, c2 in combinations(grps, 2)])
 
@@ -131,6 +171,22 @@ def mann_whitney_all_levels(df, factor, columns):
 
 
 def anova_with_graph(df, f, compare_col, labels, plot=False, show_plot=False, suffix=''):
+    """
+    Performs pair-wise Mann-Whithey comparison between all combination of factor levels in set of variables
+
+    Parameters:
+        df: pandas DataFrame
+        f:
+        compare_col:
+        labels:
+        plot:
+        show_plot:
+        suffix:
+
+    Returns:
+        anova_df: pandas DataFrame with summary
+
+    """
     df = df.copy()
     df.reset_index(inplace=True)
     anova_df = pd.DataFrame(columns=['F', 'PR(>F)'])
@@ -171,6 +227,20 @@ def anova_with_graph(df, f, compare_col, labels, plot=False, show_plot=False, su
 
 
 def sort_factanal(df, base=10, threshold=0.5, plot=True, suffix=''):
+    """
+    Performs ???
+
+    Parameters:
+        df: pandas DataFrame
+        base: base for exponential sorting coefficients
+        threshold: correlation coefficient threshold to ignore in sorting
+        plot: if plot must be shown
+        suffix: suffix in the filename
+
+    Returns:
+        df: sorted DataFrame with factor loadings
+
+    """
     multiplier = {key: 1 / (base ** x) for key, x in zip(df.columns, range(1, len(df.columns) + 1))}
     df_temp = abs(df)
     df_temp.mask(df_temp < threshold, np.NaN, inplace=True)
@@ -182,7 +252,7 @@ def sort_factanal(df, base=10, threshold=0.5, plot=True, suffix=''):
     if plot:
         sns.set_theme(style="whitegrid")
         fig = plt.figure(figsize=(12, 12))
-        gs = gridspec.GridSpec(1, len(df.columns) + 1, width_ratios=[1]+[4] * len(df.columns))
+        gs = gridspec.GridSpec(1, len(df.columns) + 1, width_ratios=[1] + [4] * len(df.columns))
         axes = [plt.subplot(gs[i]) for i in range(len(df.columns) + 1)]
         y_pos = np.arange(len(df))
 
@@ -193,10 +263,10 @@ def sort_factanal(df, base=10, threshold=0.5, plot=True, suffix=''):
         axes[0].get_xaxis().set_visible(False)
         axes[0].set_yticks(y_pos, labels=df.index)
 
-        for i in range(1, len(df.columns)+1):
-            colors = ['red' if x > 0 else 'blue' for x in df[df.columns[i-1]]]
-            sns.barplot(x=abs(df[df.columns[i-1]]), y=y_pos, ax=axes[i], orient='h', palette=colors)
-            axes[i].set_title(df.columns[i-1])
+        for i in range(1, len(df.columns) + 1):
+            colors = ['red' if x > 0 else 'blue' for x in df[df.columns[i - 1]]]
+            sns.barplot(x=abs(df[df.columns[i - 1]]), y=y_pos, ax=axes[i], orient='h', palette=colors)
+            axes[i].set_title(df.columns[i - 1])
             axes[i].set_xlim(0, 1)
             axes[i].set_xlabel('')
             axes[i].get_yaxis().set_visible(False)
@@ -217,7 +287,13 @@ if __name__ == '__main__':
     df_raw.drop(columns=DROP_COLUMNS, inplace=True, errors='ignore')
     #    df_raw.dropna(inplace=True)
 
-    compare_columns, col_for_heatmap_1, col_for_heatmap_2 = columnization(df_raw)
+    compare_columns, col_for_heatmap_1, col_for_heatmap_2 = columnization(df_raw,
+                                                                          names=['Group',
+                                                                                 'Treathment_x',
+                                                                                 'Latency_carrying_x',
+                                                                                 'Retrieval_interval_x',
+                                                                                 'Latency_carrying_y',
+                                                                                 'Retrieval_interval_y'])
 
     all_levels_tests = mann_whitney_all_levels(df=df_raw,
                                                factor='Group',
@@ -251,35 +327,58 @@ if __name__ == '__main__':
                           columns=col_for_heatmap_2,
                           show_plot=False)
 
-        df_heat = df_raw.loc[df_raw['CF_x'] == 'CF', :].copy()
+        df_cf = df_raw.loc[df_raw['CF_x'] == 'CF', :].copy()
+        df_ncf = df_raw.loc[df_raw['CF_x'] == 'nonCF', :].copy()
 
-        heatmap_clustered(df_heat.loc[df_heat['Treathment_x'] == 'PRX',],
+        heatmap_clustered(df_cf.loc[df_cf['Treathment_x'] == 'PRX',],
                           'CF_PRX_blood_',
                           colors=[cmaps.get(sp, 'black') for sp in df_raw.columns.values[col_for_heatmap_1]],
                           columns=col_for_heatmap_1,
                           show_plot=False)
-        heatmap_clustered(df_heat.loc[df_heat['Treathment_x'] == 'CTR',],
+        heatmap_clustered(df_cf.loc[df_cf['Treathment_x'] == 'CTR',],
                           'CF_CRT_blood_',
                           colors=[cmaps.get(sp, 'black') for sp in df_raw.columns.values[col_for_heatmap_1]],
                           columns=col_for_heatmap_1,
                           show_plot=False)
-        loadings_pca_PRX, var_PRX = heatmap_clustered(df_heat.loc[df_heat['Treathment_x'] == 'PRX',],
-                                             'CF_PRX_foster_',
-                                             colors=[cmaps.get(sp, 'black') for sp in
-                                                     df_raw.columns.values[col_for_heatmap_2]],
-                                             columns=col_for_heatmap_2,
-                                             show_plot=False,
-                                             pca=True)
-        loadings_pca_CRT, var_CRT = heatmap_clustered(df_heat.loc[df_heat['Treathment_x'] == 'CTR',],
-                                             'CF_CRT_foster_',
-                                             colors=[cmaps.get(sp, 'black') for sp in
-                                                     df_raw.columns.values[col_for_heatmap_2]],
-                                             columns=col_for_heatmap_2,
-                                             show_plot=False,
-                                             pca=True)
 
-        loadings_pca_PRX = sort_factanal(loadings_pca_PRX, threshold=0.4, suffix='PRX')
-        loadings_pca_CRT = sort_factanal(loadings_pca_CRT, threshold=0.4, suffix='CRT')
+        loadings_pca_PRX_cf, var_PRX_cf = heatmap_clustered(df_cf.loc[df_cf['Treathment_x'] == 'PRX',],
+                                                            'CF_PRX_foster_',
+                                                            colors=[cmaps.get(sp, 'black') for sp in
+                                                                    df_raw.columns.values[col_for_heatmap_2]],
+                                                            columns=col_for_heatmap_2,
+                                                            show_plot=False,
+                                                            pca=True)
+
+        loadings_pca_CRT_cf, var_CRT_cf = heatmap_clustered(df_cf.loc[df_cf['Treathment_x'] == 'CTR',],
+                                                            'CF_CRT_foster_',
+                                                            colors=[cmaps.get(sp, 'black') for sp in
+                                                                    df_raw.columns.values[col_for_heatmap_2]],
+                                                            columns=col_for_heatmap_2,
+                                                            show_plot=False,
+                                                            pca=True)
+
+        loadings_pca_PRX_ncf, var_PRX_ncf = heatmap_clustered(df_ncf.loc[df_ncf['Treathment_x'] == 'PRX',],
+                                                              'nonCF_PRX_foster_',
+                                                              colors=[cmaps.get(sp, 'black') for sp in
+                                                                      df_raw.columns.values[col_for_heatmap_2]],
+                                                              columns=col_for_heatmap_2,
+                                                              factors=4,
+                                                              show_plot=False,
+                                                              pca=True)
+
+        loadings_pca_CRT_ncf, var_CRT_ncf = heatmap_clustered(df_ncf.loc[df_ncf['Treathment_x'] == 'CTR',],
+                                                              'nonCF_CRT_foster_',
+                                                              colors=[cmaps.get(sp, 'black') for sp in
+                                                                      df_raw.columns.values[col_for_heatmap_2]],
+                                                              columns=col_for_heatmap_2,
+                                                              factors=5,
+                                                              show_plot=False,
+                                                              pca=True)
+
+        loadings_pca_PRX_cf = sort_factanal(loadings_pca_PRX_cf, threshold=0.4, suffix='PRX_cf')
+        loadings_pca_CRT_cf = sort_factanal(loadings_pca_CRT_cf, threshold=0.4, suffix='CRT_cf')
+        loadings_pca_PRX_ncf = sort_factanal(loadings_pca_PRX_ncf, threshold=0.4, suffix='PRX_ncf')
+        loadings_pca_CRT_ncf = sort_factanal(loadings_pca_CRT_ncf, threshold=0.4, suffix='CRT_ncf')
 
     if anova_graph:
         anova_treat_vs_CF = anova_with_graph(df=df_raw,
