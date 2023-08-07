@@ -1,1 +1,4 @@
-# Project_Maryia_Summer_2023
+# Data Analysis for Maryia's project
+
+Performed by Sergey Grigorovich
+2023
