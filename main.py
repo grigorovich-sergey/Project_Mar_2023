@@ -25,13 +25,14 @@ def columnization(df, names):
 
     Returns:
         (column names of participant's data, column names for blood mother, column names for foster mother)
+
     """
     columns_limit_l = np.argwhere(df.columns.values == names[0])[0][0] + 1
     columns_limit_r = np.argwhere(df.columns.values == names[1])[0][0] - 1
     columns_limit_l_m1 = np.argwhere(df.columns.values == names[2])[0][0]
     columns_limit_r_m1 = np.argwhere(df.columns.values == names[3])[0][0] + 1
     columns_limit_l_m2 = np.argwhere(df.columns.values == names[4])[0][0]
-    columns_limit_r_m2 = np.argwhere(df.columns.values == [5])[0][0] + 1
+    columns_limit_r_m2 = np.argwhere(df.columns.values == names[5])[0][0] + 1
 
     compare_col = df.columns.values[columns_limit_l:columns_limit_r]
     col_for_heat_1 = list(range(columns_limit_l, columns_limit_r + 1)) \
@@ -285,7 +286,6 @@ if __name__ == '__main__':
     df_raw = pd.read_csv('./Input/Maryia-all-fix.csv')
     df_raw.columns = df_raw.columns.str.replace(".", "_")
     df_raw.drop(columns=DROP_COLUMNS, inplace=True, errors='ignore')
-    #    df_raw.dropna(inplace=True)
 
     compare_columns, col_for_heatmap_1, col_for_heatmap_2 = columnization(df_raw,
                                                                           names=['Group',
@@ -371,7 +371,7 @@ if __name__ == '__main__':
                                                               colors=[cmaps.get(sp, 'black') for sp in
                                                                       df_raw.columns.values[col_for_heatmap_2]],
                                                               columns=col_for_heatmap_2,
-                                                              factors=5,
+                                                              factors=4,
                                                               show_plot=False,
                                                               pca=True)
 
